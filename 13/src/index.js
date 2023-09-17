@@ -1,11 +1,10 @@
 const canvasSketch = require("canvas-sketch");
-
 const THREE = require("three");
 global.THREE = THREE;
-const { Text } = require('troika-three-text');
-const createGeometry = require('three-bmfont-text');
+const { Text } = require("troika-three-text");
+const Stats = require("stats-js");
+const { GUI } = require("dat.gui");
 const loadFont = require('load-bmfont');
-
 // Import extra THREE plugins
 require("three/examples/js/controls/OrbitControls");
 require("three/examples/js/geometries/RoundedBoxGeometry.js");
@@ -13,18 +12,10 @@ require("three/examples/js/loaders/GLTFLoader.js");
 require("three/examples/js/loaders/RGBELoader.js");
 require("three/examples/js/postprocessing/EffectComposer.js");
 require("three/examples/js/postprocessing/RenderPass.js");
-require("three/examples/js/postprocessing/ShaderPass.js");
 require("three/examples/js/postprocessing/UnrealBloomPass.js");
 require("three/examples/js/shaders/LuminosityHighPassShader.js");
 require("three/examples/js/shaders/CopyShader.js");
-require("three/examples/js/loaders/FontLoader.js");
-require("troika-three-text");
-
-const Stats = require("stats-js");
-const { GUI } = require("dat.gui");
-
-
-
+require("three/examples/js/postprocessing/ShaderPass.js");
 
 const settings = {
   animate: true,
@@ -75,6 +66,9 @@ const sketch = ({ context, canvas, width, height }) => {
 
   // Assume 'canvas' is your canvas element where you've drawn text
 // And assume you have already set up a Three.js scene named 'scene'
+// Add download button event
+
+
 
 const certificationNumber = '77032826';
 const labelType = 'with fugitive ink technology';
@@ -142,7 +136,7 @@ scene.add(blueLight);
   const textureLoader = new THREE.TextureLoader();
 
 // Loading the card images from URLs THIS WILL BE A VARIABLE FROM THE SCRAPER
-const frontTexture = new THREE.TextureLoader().load('https://sportscardinvestor.s3.amazonaws.com/prod/5776_5490_8716_221-L');
+const frontTexture = new THREE.TextureLoader().load('https://houseofcards.ca/cdn/shop/products/92ee58a8-13dd-4831-9752-63f1db5e17d0_800x.png?v=1620603410');
 
 
 // Creating the card's geometry. Adjust the dimensions so it fits inside the glass holder.
@@ -178,33 +172,7 @@ scene.add(frontCardMesh);
 
 
 
-  loadFont('./src/Lato-Regular-32.fnt', (err, font) => {
-    if (err) {
-      console.error('Error loading font:', err);
-      return;
-    }
-  
-    // Create geometry of packed bitmap glyphs, 
-    // word wrapped to 300px and right-aligned
-    const geometry = createGeometry({
-      width: 300,
-      align: 'right',
-      font: font
-    });
-  
-    // Update the geometry to reflect a new text string
-    geometry.update('Your new text here');
-  
-    // Create a ThreeJS mesh from the geometry
-    // Assign any material to this mesh
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const textMesh = new THREE.Mesh(geometry, material);
-  
-    // Add the text mesh to your existing scene
-    scene.add(textMesh);
-    
-    // ... continue with your animation/render loop here ...
-  });
+
 
   const positions = [
     [0, 0, 0] // Only position for the rounded box
@@ -321,92 +289,24 @@ scene.add(light2);
     mesh.position.set(...positions[i]);
   });
 
-  // // Add dragon GLTF model
-  // new THREE.GLTFLoader().load("src/dragon.glb", (gltf) => {
-  //   const dragon = gltf.scene.children.find((mesh) => mesh.name === "Dragon");
-
-  //   // Just copy the geometry from the loaded model
-  //   const geometry = dragon.geometry.clone();
-
-  //   // Adjust geometry to suit our scene
-  //   geometry.rotateX(Math.PI / 2);
-  //   geometry.translate(0, -4, 0);
-
-  //   // Create a new mesh and place it in the scene
-  //   const mesh = new THREE.Mesh(geometry, material);
-  //   mesh.position.set(...positions[3]);
-  //   mesh.scale.set(0.135, 0.135, 0.135);
-  //   meshes.push(mesh);
-  //   scene.add(mesh);
-
-  //   // Discard the model
-  //   dragon.geometry.dispose();
-  //   dragon.material.dispose();
-  // });
-
-  // GUI
-  // ---
-
-  gui.add(options, "enableSwoopingCamera").onChange((val) => {
-    controls.enabled = !val;
-    controls.reset();
+  const btn = document.getElementById('download-glb');
+if (btn) {
+  btn.addEventListener('click', () => {
+    const exporter = new THREE.GLTFExporter();
+    exporter.parse(scene, (gltf) => {
+      const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'scene.glb';
+      link.click();
+    }, { binary: true });
   });
+}
 
-  gui.add(options, "enableRotation").onChange(() => {
-    meshes.forEach((mesh) => mesh.rotation.set(0, 0, 0));
-  });
 
-  gui.add(options, "transmission", 0, 1, 0.01).onChange((val) => {
-    material.transmission = val;
-  });
 
-  gui.add(options, "thickness", 0, 5, 0.1).onChange((val) => {
-    material.thickness = val;
-  });
-
-  gui.add(options, "roughness", 0, 1, 0.01).onChange((val) => {
-    material.roughness = val;
-  });
-
-  gui.add(options, "envMapIntensity", 0, 3, 0.1).onChange((val) => {
-    material.envMapIntensity = val;
-  });
-
-  gui.add(options, "clearcoat", 0, 1, 0.01).onChange((val) => {
-    material.clearcoat = val;
-  });
-
-  gui.add(options, "clearcoatRoughness", 0, 1, 0.01).onChange((val) => {
-    material.clearcoatRoughness = val;
-  });
-
-  gui.add(options, "normalScale", 0, 5, 0.01).onChange((val) => {
-    material.normalScale.set(val, val);
-  });
-
-  gui.add(options, "clearcoatNormalScale", 0, 5, 0.01).onChange((val) => {
-    material.clearcoatNormalScale.set(val, val);
-  });
-
-  gui.add(options, "normalRepeat", 1, 4, 1).onChange((val) => {
-    normalMapTexture.repeat.set(val, val);
-  });
-
-  const postprocessing = gui.addFolder("Post Processing");
-  postprocessing.open();
-
-  postprocessing.add(options, "bloomThreshold", 0, 1, 0.01).onChange((val) => {
-    bloomPass.threshold = val;
-  });
-
-  postprocessing.add(options, "bloomStrength", 0, 5, 0.01).onChange((val) => {
-    bloomPass.strength = val;
-  });
-
-  postprocessing.add(options, "bloomRadius", 0, 1, 0.01).onChange((val) => {
-    bloomPass.radius = val;
-  });
-
+  
   // Update
   // ------
 
