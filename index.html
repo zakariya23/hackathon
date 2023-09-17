@@ -27,9 +27,11 @@
         });
         
         // Create an iframe dynamically
+        const serverHost = window.location.hostname;
+        const url = `http://${serverHost}:9966/?psa_id=${psaId}`;
         const threejsFrame = document.createElement("iframe");
         threejsFrame.id = "threejsFrame";
-        threejsFrame.src = `http://10.33.143.89:9967/?psa_id=${psaId}`;
+        threejsFrame.src = url;
         threejsFrame.style.width = "800px";
         threejsFrame.style.height = "600px";
         
