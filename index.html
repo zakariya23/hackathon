@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Card Viewer</title>
+  <script>
+    async function loadCard() {
+      const psaId = document.getElementById("psa-id").value;
+      
+      const response = await fetch("http://localhost:5000/get_card_details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: psaId }),
+      });
+
+      if (response.ok) {
+        const psa_data = await response.json();
+        
+        // Send this data to your Flask backend
+        await fetch('http://localhost:5000/store_psa_data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ psa_id: psaId, psa_data: psa_data }),
+        });
+        
+        // Create an iframe dynamically
+        const threejsFrame = document.createElement("iframe");
+        threejsFrame.id = "threejsFrame";
+        threejsFrame.src = `http://10.33.143.89:9967/?psa_id=${psaId}`;
+        threejsFrame.style.width = "800px";
+        threejsFrame.style.height = "600px";
+        
+        // Append the iframe to the body (or any other container)
+        document.body.appendChild(threejsFrame);
+        
+      } else {
+        console.error("Failed to fetch card details");
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Enter PSA Number</h1>
+  <form id="psaForm" onsubmit="loadCard(); return false;">
+    <input type="text" id="psa-id" placeholder="PSA Number">
+    <button type="submit">Submit</button>
+  </form>
+  <!-- The iframe will be inserted here dynamically -->
+</body>
+</html>

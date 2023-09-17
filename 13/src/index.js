@@ -16,12 +16,60 @@ require("three/examples/js/postprocessing/UnrealBloomPass.js");
 require("three/examples/js/shaders/LuminosityHighPassShader.js");
 require("three/examples/js/shaders/CopyShader.js");
 require("three/examples/js/postprocessing/ShaderPass.js");
-
+require("three/examples/js/exporters/GLTFExporter.js")
 const settings = {
   animate: true,
   context: "webgl",
   resizeCanvas: false,
 };
+
+// Declare data at a higher scope
+let cardData = {};
+
+// Parse the URL parameters to get the data
+const urlParams = new URLSearchParams(window.location.search);
+const psaId = urlParams.get('psa_id');
+
+let frontTexture;  // Declare at a higher scope so it can be accessed later
+
+// Fetch PSA data from Flask backend
+async function fetchPSAData() {
+  const response = await fetch(`http://localhost:5000/get_psa_data/${psaId}`);
+  if (response.ok) {
+    cardData = await response.json();
+    // Now you have cardData, use it in your Three.js code
+    console.log(cardData);
+    const localImageUrl = cardData['local_image_url'];
+    frontTexture = new THREE.TextureLoader().load(localImageUrl);
+  } else {
+    console.error("Failed to fetch PSA data from Flask backend");
+  }
+}
+
+// Make sure to call this function
+// fetchPSAData();
+
+async function waitForCardData() {
+
+  
+
+  while (Object.keys(cardData).length === 0) {  // Checks if cardData is empty
+    await new Promise(resolve => setTimeout(resolve, 100));  // Wait for 100ms
+  }
+  // Now, cardData is not empty. Continue with the rest of your code.
+}
+
+
+async function fetchDataAndStartSketch() {
+
+    // Fetch your data
+    await fetchPSAData();
+
+    // Wait for cardData to be populated
+    await waitForCardData();
+
+
+
 
 const sketch = ({ context, canvas, width, height }) => {
   const stats = new Stats();
@@ -64,35 +112,35 @@ const sketch = ({ context, canvas, width, height }) => {
 
   const scene = new THREE.Scene();
 
-  // Assume 'canvas' is your canvas element where you've drawn text
-// And assume you have already set up a Three.js scene named 'scene'
-// Add download button event
+  console.log('------------------')
+  console.log(cardData)
 
+// Use data to populate your constants and text content
+const certificationNumber = cardData['Certification Number'];
+const labelType = cardData['Label Type'];
+const reverseCertNumberBarcode = cardData['Reverse Cert Number/Barcode'];
+const year = cardData['Year'];
+const brand = cardData['Brand'];
+const sport = cardData['Sport'];
+const cardNumber = cardData['Card Number'];
+const player = cardData['Player'];
+const varietyPedigree = cardData['Variety/Pedigree'];
+const grade = cardData['Grade'];
 
-
-const certificationNumber = '77032826';
-const labelType = 'with fugitive ink technology';
-const reverseCertNumberBarcode = 'Yes';
-const year = '2023';
-const brand = 'MAGIC THE GATHERING TALES OF MIDDLE-EARTH';
-const sport = 'TCG Cards';
-const cardNumber = ''; // Empty in your example
-const player = 'THE ONE RING';
-const varietyPedigree = 'TALES OF MIDDLE-EARTH 1/1';
-const grade = 'MINT 9';
 
 const textContent = `
-Certification Number: ${certificationNumber}
-Label Type: ${labelType}
-Reverse Cert Number/Barcode: ${reverseCertNumberBarcode}
-Year: ${year}
-Brand: ${brand}
-Sport: ${sport}
-Card Number: ${cardNumber}
-Player: ${player}
-Variety/Pedigree: ${varietyPedigree}
-Grade: ${grade}
+  Certification Number: ${certificationNumber}
+  Label Type: ${labelType}
+  Reverse Cert Number/Barcode: ${reverseCertNumberBarcode}
+  Year: ${year}
+  Brand: ${brand}
+  Sport: ${sport}
+  Card Number: ${cardNumber}
+  Player: ${player}
+  Variety/Pedigree: ${varietyPedigree}
+  Grade: ${grade}
 `;
+
 
 
 
@@ -136,8 +184,9 @@ scene.add(blueLight);
   const textureLoader = new THREE.TextureLoader();
 
 // Loading the card images from URLs THIS WILL BE A VARIABLE FROM THE SCRAPER
-const frontTexture = new THREE.TextureLoader().load('https://houseofcards.ca/cdn/shop/products/92ee58a8-13dd-4831-9752-63f1db5e17d0_800x.png?v=1620603410');
-
+// Use data to populate the image
+// const imageUrl = data['image_url'];
+// const frontTexture = new THREE.TextureLoader().load(imageUrl);
 
 // Creating the card's geometry. Adjust the dimensions so it fits inside the glass holder.
 const cardGeometry = new THREE.PlaneGeometry(0.8, 1.2); // example dimensions, please adjust accordingly
@@ -157,7 +206,20 @@ frontCardMesh.position.set(0, 0.22, 0.09); // small z-offset to place it inside 
 //https://www.sportscardinvestor.com/cards/mewtwo-vstar-pokemon/2022-japanese-sword-shield-vstar-universe-special-art-rare/
 // /cards/
 // Rotate the backCardMesh by 180 degrees so it faces the opposite direction
+// Create a basic black material for the backside
+const backMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
 
+// Create the mesh for the backside using the same geometry but with the black material
+const backCardMesh = new THREE.Mesh(cardGeometry, backMaterial);
+
+// Position the back card mesh right behind the front card mesh
+backCardMesh.position.set(0, 0.22, 0.088); // Slightly behind the front card
+
+// Rotate the back card mesh by 180 degrees along the Y-axis so it faces the opposite direction
+backCardMesh.rotation.y = Math.PI;
+
+// Add the back card mesh to your scene
+scene.add(backCardMesh);
 
 // Add the card meshes to your scene
 scene.add(frontCardMesh);
@@ -289,20 +351,7 @@ scene.add(light2);
     mesh.position.set(...positions[i]);
   });
 
-  const btn = document.getElementById('download-glb');
-if (btn) {
-  btn.addEventListener('click', () => {
-    const exporter = new THREE.GLTFExporter();
-    exporter.parse(scene, (gltf) => {
-      const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'scene.glb';
-      link.click();
-    }, { binary: true });
-  });
-}
+
 
 
 
@@ -330,6 +379,12 @@ if (btn) {
       camera.position.z = 4;
       camera.lookAt(scene.position);
     }
+
+
+
+
+
+
   };
 
   // Lifecycle
@@ -374,6 +429,13 @@ if (btn) {
       document.body.removeChild(stats.dom);
     },
   };
+
+
+
+
 };
 
-canvasSketch(sketch, settings);
+canvasSketch(sketch, settings);}
+
+// Call this function to fetch data and then start the sketch
+fetchDataAndStartSketch();
