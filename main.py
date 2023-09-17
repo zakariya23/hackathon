@@ -14,12 +14,9 @@ def create_proxy_dict(proxy):
     port = components[1]
     user_pass = ":".join(components[2:])
     user, password = user_pass.split(":")
-
     return {
         "http": f"http://{user}:{password}@{host}:{port}/",
-        # "https": f"https://{user}:{password}@{host}:{port}/"
     }
-
 
 # Read proxies from CSV
 df = pd.read_csv('proxies.csv')
@@ -52,52 +49,58 @@ def get_psa_card(id):
 
     return card_details
 
-def get_sci_data(query):
+def get_sci_data(query, index_id=None):
     api_url = "https://api.sportscardinvestor.com/stats/sciFreeSearch"
     params = {
-        "query": query,
-        "index_id": "txCV7sqVPfw1MHWh2T41GB"
+        "query": query
     }
-    response = requests.get(api_url, params=params)
+    if index_id:  # Add index_id if it exists
+        params['index_id'] = index_id
 
+    response = requests.get(api_url, params=params)
     if response.status_code != 200:
         print(f"Error fetching data: {response.status_code}")
-        return {}
+        return None, None  # Return None for both data and index_id
 
-    return response.json()
+    data = response.json()
+    new_index_id = data.get('index_id', None)  # Extract new index_id from the response
+    return data, new_index_id
 
 if __name__ == "__main__":
-    id = "78282755"  # Replace with the ID you want to query
+    id = "45899295"  # Replace with the ID you want to query
     card_details = get_psa_card(id)
-    # print("PSA Card Details:")
-    # print(json.dumps(card_details, indent=4))
-
     player = card_details.get("Player", "").split("/")[-1]
     year = card_details.get("Year", "")
     brand = card_details.get("Brand", "")
 
     query_terms = [player, year, brand]
+    dynamic_index_id = None  # Initialize with None
     lowest_total = float('inf')
     final_response = {}
 
-    for i in range(1, len(query_terms) + 1):
-        for j in range(i, len(query_terms) + 1):
-            query = " ".join(query_terms[i-1:j])
-            sci_data = get_sci_data(query)
-            total = sci_data.get("total", float('inf'))
+    for term in query_terms:
+        partial_query = ""
+        for char in term:
+            partial_query += char
 
-            if total < lowest_total:
-                lowest_total = total
-                final_response = sci_data
+            print(f"Partial query: {partial_query}")
 
-            if total == 0:
-                break
+            # Use dynamic_index_id for the API call
+            sci_data, new_index_id = get_sci_data(partial_query, dynamic_index_id)
 
-    # print("Sportscardinvestor Data:")
-    # print(json.dumps(final_response, indent=4))
+            if new_index_id:
+                dynamic_index_id = new_index_id  # Update dynamic_index_id for the next query
 
-    # Add 'image_url' to original JSON if 'card_number' matches
-        # Add 'image_url' to original JSON if 'card_number' matches
+            if sci_data:  # Check if sci_data is not None
+                total = sci_data.get("total", float('inf'))
+
+                if total < lowest_total:
+                    lowest_total = total
+                    final_response = sci_data
+
+                if total == 0:
+                    break
+
     if final_response.get('cards'):
         for card in final_response['cards']:
             sci_card_number = card.get('card_number', '').replace("#", "")
@@ -107,6 +110,4 @@ if __name__ == "__main__":
                 card_details['image_url'] = card.get('image_url')
                 break
 
-
-    # print("Updated PSA Card Details:")
     print(json.dumps(card_details, indent=4))
