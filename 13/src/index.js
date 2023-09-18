@@ -23,8 +23,6 @@ const settings = {
   resizeCanvas: false,
 };
 
-// Declare data at a higher scope
-let cardData = {};
 
 // Parse the URL parameters to get the data
 const urlParams = new URLSearchParams(window.location.search);
@@ -32,27 +30,37 @@ const psaId = urlParams.get('psa_id');
 
 let frontTexture;  // Declare at a higher scope so it can be accessed later
 
-// Fetch PSA data from Flask backend
-async function fetchPSAData() {
-  const response = await fetch(`http://localhost:5000/get_psa_data/${psaId}`);
+// Global variable to hold card data
+let cardData = {};
+
+async function fetchCardDetails() {
+  // Fetch card details and store them
+  const response = await fetch(`http://localhost:5000/get_card_details`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ id: psaId })
+  });
   if (response.ok) {
     cardData = await response.json();
-    // Now you have cardData, use it in your Three.js code
+    // Store cardData into Flask backend for retrieval later (Optional)
+    await fetch(`http://localhost:5000/store_psa_data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ psa_id: psaId, psa_data: cardData })
+    });
     console.log(cardData);
     const localImageUrl = cardData['local_image_url'];
     frontTexture = new THREE.TextureLoader().load(localImageUrl);
   } else {
-    console.error("Failed to fetch PSA data from Flask backend");
+    console.error("Failed to fetch card details from Flask backend");
   }
 }
 
-// Make sure to call this function
-// fetchPSAData();
-
 async function waitForCardData() {
-
-  
-
   while (Object.keys(cardData).length === 0) {  // Checks if cardData is empty
     await new Promise(resolve => setTimeout(resolve, 100));  // Wait for 100ms
   }
@@ -60,13 +68,15 @@ async function waitForCardData() {
 }
 
 
-async function fetchDataAndStartSketch() {
 
-    // Fetch your data
-    await fetchPSAData();
+async function fetchDataAndStartSketch(psaId) {
+  // Fetch card details
+  await fetchCardDetails(psaId);
+  // Wait for cardData to be populated
+  await waitForCardData();
+  // Continue with your Three.js code here
 
-    // Wait for cardData to be populated
-    await waitForCardData();
+
 
 
 
@@ -75,8 +85,8 @@ const sketch = ({ context, canvas, width, height }) => {
   const stats = new Stats();
   document.body.appendChild(stats.dom);
   const gui = new GUI();
-  
-  
+
+
 
   const options = {
     enableSwoopingCamera: false,
@@ -183,10 +193,6 @@ scene.add(blueLight);
 
   const textureLoader = new THREE.TextureLoader();
 
-// Loading the card images from URLs THIS WILL BE A VARIABLE FROM THE SCRAPER
-// Use data to populate the image
-// const imageUrl = data['image_url'];
-// const frontTexture = new THREE.TextureLoader().load(imageUrl);
 
 // Creating the card's geometry. Adjust the dimensions so it fits inside the glass holder.
 const cardGeometry = new THREE.PlaneGeometry(0.8, 1.2); // example dimensions, please adjust accordingly
@@ -199,14 +205,9 @@ const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture });
 const frontCardMesh = new THREE.Mesh(cardGeometry, frontMaterial);
 
 
-// Position the card meshes inside the glass holder
-// Assuming that the glass holder is centered at (0, 0, 0)
 frontCardMesh.position.set(0, 0.22, 0.09); // small z-offset to place it inside the holder
 
-//https://www.sportscardinvestor.com/cards/mewtwo-vstar-pokemon/2022-japanese-sword-shield-vstar-universe-special-art-rare/
-// /cards/
-// Rotate the backCardMesh by 180 degrees so it faces the opposite direction
-// Create a basic black material for the backside
+
 const backMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Black color
 
 // Create the mesh for the backside using the same geometry but with the black material
@@ -288,15 +289,15 @@ scene.add(frontCardMesh);
       lightColor2: { value: new THREE.Vector3(0, 0, 1) }  // Blue light
     }
   });
-  
+
   const solidMesh = new THREE.Mesh(
     new THREE.RoundedBoxGeometry(1.13, 0.807, 0.3, 16, 0.21),
     solidMaterial
   );
-  
+
   solidMesh.position.set(0, -0.807, 0);
   scene.add(solidMesh);
-  
+
 
 
   const light1 = new THREE.PointLight(0xFF00FF, 1, 1000); // Pink light
@@ -306,12 +307,12 @@ scene.add(light1);
 const light2 = new THREE.PointLight(0x0000FF, 1, 1000); // Blue light
 light2.position.set(-50, 50, 50);
 scene.add(light2);
-  
 
 
 
 
-  
+
+
 
   const hdrEquirect = new THREE.RGBELoader().load(
     "src/empty_warehouse_01_2k.hdr",
@@ -339,7 +340,7 @@ scene.add(light2);
     clearcoatNormalScale: new THREE.Vector2(options.clearcoatNormalScale),
     transparent: true,
 
-    
+
   });
 
   const meshes = geometries.map(
@@ -355,7 +356,7 @@ scene.add(light2);
 
 
 
-  
+
   // Update
   // ------
 

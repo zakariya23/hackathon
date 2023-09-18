@@ -5,7 +5,7 @@
   <script>
     async function loadCard() {
       const psaId = document.getElementById("psa-id").value;
-      
+
       const response = await fetch("http://localhost:5000/get_card_details", {
         method: "POST",
         headers: {
@@ -16,31 +16,19 @@
 
       if (response.ok) {
         const psa_data = await response.json();
-        
-        // Send this data to your Flask backend
-        await fetch('http://localhost:5000/store_psa_data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ psa_id: psaId, psa_data: psa_data }),
-        });
-        
-        // Create an iframe dynamically
-        const serverHost = window.location.hostname;
-        const url = `http://${serverHost}:9966/?psa_id=${psaId}`;
-        const threejsFrame = document.createElement("iframe");
-        threejsFrame.id = "threejsFrame";
-        threejsFrame.src = url;
-        threejsFrame.style.width = "800px";
-        threejsFrame.style.height = "600px";
-        
-        // Append the iframe to the body (or any other container)
-        document.body.appendChild(threejsFrame);
-        
+
+        // Initialize Three.js scene here, passing in psa_data
+        initThreeJsScene(psa_data);
+
       } else {
         console.error("Failed to fetch card details");
       }
+    }
+
+    // Initialize your Three.js scene here
+    function initThreeJsScene(psa_data) {
+      // Logic to set up Three.js scene
+      
     }
   </script>
 </head>
@@ -50,6 +38,8 @@
     <input type="text" id="psa-id" placeholder="PSA Number">
     <button type="submit">Submit</button>
   </form>
-  <!-- The iframe will be inserted here dynamically -->
+  <div id="threejs-container">
+    <!-- Three.js canvas will be appended here -->
+  </div>
 </body>
 </html>
